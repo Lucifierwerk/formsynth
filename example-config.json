@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "url": "https://docs.google.com/forms/d/e/1FAIpQLScRw4lp6OEtVB4cPt_tANgzeGcQvQMzclprnQ9b9LEI76vYgQ/viewform",
+  "settings": {
+    "total": 100,
+    "concurrency": 3,
+    "min_delay": 3,
+    "max_delay": 10,
+    "retry_count": 2,
+    "batch_size": 10,
+    "batch_pause": 5,
+    "profiles": ["young_female", "budget_buyer"]
+  },
+  "_comment": "This config mirrors the original flower-shop survey script weights. After parsing the form, load this file to pre-fill settings, then adjust weights in the UI as needed."
+}

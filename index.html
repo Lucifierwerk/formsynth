@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>КРИПТОБИРЖА РОБОГРАДА</title>
+<style>
+/* ─── VARIABLES ─── */
+:root{
+  --bg:    #060d06;
+  --bg2:   #0b150b;
+  --bg3:   #0f1c0f;
+  --bg4:   #162416;
+  --g0:    #00ff41;   /* neon green */
+  --g1:    #39e839;
+  --g2:    #1db31d;
+  --g3:    #0f6b0f;
+  --g4:    #0a4a0a;
+  --gdim:  #3a6b3a;
+  --gtext: #b8f0b8;
+  --gtxt2: #5a9a5a;
+  --red:   #ff2d55;
+  --redb:  rgba(255,45,85,.08);
+  --upb:   rgba(0,255,65,.08);
+  --bord:  #1a3a1a;
+  --gold:  #ccff00;
+  --cyan:  #00ffe5;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+
+/* ─── CIRCUIT BACKGROUND ─── */
+body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(circle, #0d2a0d 1px, transparent 1px),
+    linear-gradient(rgba(0,255,65,.025) 1px, transparent 1px),
+    linear-gradient(90deg,rgba(0,255,65,.025) 1px, transparent 1px);
+  background-size: 40px 40px, 20px 20px, 20px 20px;
+  color:var(--gtext);
+  font-family:'Courier New',Courier,monospace;
+  display:flex;flex-direction:column;height:100vh;
+}
+
+/* scanline overlay */
+body::after{
+  content:'';pointer-events:none;position:fixed;inset:0;
+  background:repeating-linear-gradient(
+    0deg,transparent,transparent 2px,
+    rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px
+  );
+  z-index:9999;
+}
+
+/* ─── HEADER ─── */
+#hdr{
+  background:var(--bg2);
+  border-bottom:2px solid var(--g0);
+  box-shadow:0 0 20px rgba(0,255,65,.3);
+  padding:0 16px;
+  height:56px;
+  display:flex;align-items:center;gap:14px;
+  flex-shrink:0;
+  position:relative;
+  z-index:10;
+}
+#hdr-logo{
+  display:flex;align-items:center;gap:8px;
+}
+#hdr-logo .robot{font-size:1.6rem;filter:drop-shadow(0 0 6px var(--g0))}
+#hdr-title{
+  font-size:1.1rem;font-weight:900;letter-spacing:3px;
+  color:var(--g0);text-shadow:0 0 12px var(--g0),0 0 30px rgba(0,255,65,.4);
+  text-transform:uppercase;line-height:1.1;
+}
+#hdr-title span{
+  display:block;font-size:.6rem;letter-spacing:4px;color:var(--g2);font-weight:400;
+}
+.hdr-sep{flex:1}
+#period-box{
+  background:var(--bg3);
+  border:1px solid var(--g0);
+  border-radius:4px;
+  padding:5px 18px;
+  text-align:center;
+  box-shadow:0 0 12px rgba(0,255,65,.25), inset 0 0 12px rgba(0,255,65,.05);
+}
+#period-box .plabel{font-size:.55rem;letter-spacing:3px;color:var(--g2);text-transform:uppercase}
+#period-box .pnum {font-size:1.8rem;font-weight:900;color:var(--g0);line-height:1;
+  text-shadow:0 0 16px var(--g0);}
+#hdr-btns{display:flex;gap:5px}
+.hb{
+  background:var(--bg3);border:1px solid var(--bord);
+  color:var(--gtext);border-radius:4px;cursor:pointer;
+  font-size:.95rem;width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;font-family:inherit;
+}
+.hb:hover{border-color:var(--g0);color:var(--g0);box-shadow:0 0 8px rgba(0,255,65,.3)}
+
+/* ─── MAIN ─── */
+#main{flex:1;display:flex;overflow:hidden}
+
+/* ─── LEFT ─── */
+#left{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#tbl-wrap{flex:1;overflow-y:auto}
+
+table#tbl{width:100%;border-collapse:collapse}
+#tbl th{
+  position:sticky;top:0;z-index:2;
+  background:var(--bg3);
+  color:var(--gtxt2);
+  font-size:.72rem;letter-spacing:2px;text-transform:uppercase;
+  padding:9px 14px;border-bottom:1px solid var(--bord);text-align:left;
+  font-family:inherit;
+}
+#tbl td{padding:14px 14px;border-bottom:1px solid var(--bord);vertical-align:middle}
+
+.sr{transition:background .3s}
+.sr.up  {background:var(--upb)}
+.sr.down{background:var(--redb)}
+.sr.neu {background:transparent}
+.sr.flash-up{animation:fup .6s ease-out forwards}
+.sr.flash-dn{animation:fdn .6s ease-out forwards}
+@keyframes fup{0%{background:rgba(0,255,65,.4)}100%{background:var(--upb)}}
+@keyframes fdn{0%{background:rgba(255,45,85,.4)}100%{background:var(--redb)}}
+
+.sname{font-size:1.55rem;font-weight:900;color:var(--gtext);
+  text-shadow:0 0 6px rgba(0,255,65,.2);letter-spacing:1px}
+.sticker{font-size:.72rem;color:var(--gtxt2);letter-spacing:2px;margin-top:2px}
+
+.sprice{font-size:1.9rem;font-weight:900;color:var(--g0);
+  text-shadow:0 0 12px rgba(0,255,65,.5)}
+.srt{font-size:.72rem;color:var(--g2);letter-spacing:1px}
+
+.schg{font-size:1.25rem;font-weight:700}
+.schg.up  {color:var(--g0);text-shadow:0 0 8px var(--g0)}
+.schg.down{color:var(--red);text-shadow:0 0 8px var(--red)}
+.schg.neu {color:var(--gtxt2)}
+
+canvas.spark{cursor:pointer;display:block;border-radius:2px}
+canvas.spark:hover{opacity:.75}
+
+/* ─── NEWS ─── */
+#news-wrap{
+  height:140px;flex-shrink:0;
+  background:var(--bg2);border-top:1px solid var(--bord);
+  overflow-y:auto;padding:5px 10px;
+}
+.ni{
+  padding:4px 10px;margin:2px 0;border-radius:2px;
+  font-size:.85rem;border-left:3px solid;line-height:1.45;
+  font-family:inherit;
+}
+.ni.positive{border-color:var(--g0);background:rgba(0,255,65,.04);color:var(--gtext)}
+.ni.negative{border-color:var(--red);background:rgba(255,45,85,.04);color:#ffb0b8}
+.ni.neutral {border-color:var(--gtxt2);background:transparent;color:var(--gtxt2)}
+.ni.event   {border-color:var(--gold);background:rgba(204,255,0,.05);color:var(--gold);font-weight:700}
+.ni-meta{color:var(--gtxt2);font-size:.65rem;margin-right:4px}
+
+/* ─── RIGHT PANEL ─── */
+#rpanel{
+  width:290px;flex-shrink:0;
+  background:var(--bg2);border-left:1px solid var(--bord);
+  display:flex;flex-direction:column;overflow-y:auto;
+  transition:width .25s,opacity .25s;
+}
+#rpanel.hidden{width:0;overflow:hidden;opacity:0}
+#rpi{padding:12px;display:flex;flex-direction:column;gap:10px;min-width:290px}
+
+.rp-hd{
+  font-size:.58rem;letter-spacing:3px;color:var(--gtxt2);
+  text-transform:uppercase;padding-bottom:5px;
+  border-bottom:1px solid var(--bord);font-family:inherit;
+}
+
+/* event card */
+#evc{
+  display:none;padding:9px 11px;border-radius:4px;
+  border:1px solid var(--gold);background:rgba(204,255,0,.05);
+}
+#evc.positive{border-color:var(--g0);background:rgba(0,255,65,.07)}
+#evc.negative{border-color:var(--red);background:rgba(255,45,85,.07)}
+#evc .etc{font-weight:700;font-size:.85rem;margin-bottom:3px}
+#evc.positive .etc{color:var(--g0)}
+#evc.negative .etc{color:var(--red)}
+#evc.neutral  .etc{color:var(--gold)}
+#evc .etd{font-size:.72rem;color:var(--gtxt2)}
+
+/* changes */
+#chlist{display:flex;flex-direction:column;gap:4px}
+.chr{display:flex;gap:4px;align-items:center}
+.chr select,.chr input[type=number]{
+  background:var(--bg3);border:1px solid var(--bord);
+  color:var(--gtext);border-radius:3px;padding:6px 8px;
+  font-size:.88rem;font-family:inherit;
+}
+.chr select{flex:1}
+.chr input[type=number]{width:62px}
+.chr select:focus,.chr input:focus{outline:none;border-color:var(--g2)}
+
+/* history */
+#histlist{display:flex;flex-direction:column;gap:3px}
+.hi{
+  background:var(--bg3);border-radius:3px;padding:5px 7px;
+  font-size:.7rem;color:var(--gtxt2);line-height:1.4;
+  border-left:2px solid var(--bord);
+}
+.hi strong{color:var(--gtext)}
+
+/* ─── BUTTONS ─── */
+.btn{
+  padding:7px 13px;border:1px solid;border-radius:4px;cursor:pointer;
+  font-size:.8rem;font-weight:700;font-family:inherit;letter-spacing:1px;
+  text-transform:uppercase;transition:all .15s;
+  display:inline-flex;align-items:center;gap:5px;justify-content:center;
+}
+.btn:active{transform:scale(.97)}
+
+.btn-green{
+  background:rgba(0,255,65,.1);border-color:var(--g0);color:var(--g0);
+  box-shadow:0 0 10px rgba(0,255,65,.15);
+}
+.btn-green:hover{background:rgba(0,255,65,.2);box-shadow:0 0 16px rgba(0,255,65,.3)}
+
+.btn-apply{
+  background:rgba(0,255,65,.15);border-color:var(--g0);color:var(--g0);
+  font-size:.9rem;box-shadow:0 0 14px rgba(0,255,65,.2);
+}
+.btn-apply:hover{background:rgba(0,255,65,.25);box-shadow:0 0 22px rgba(0,255,65,.4)}
+
+.btn-gold{
+  background:rgba(204,255,0,.1);border-color:var(--gold);color:var(--gold);
+  box-shadow:0 0 10px rgba(204,255,0,.15);
+}
+.btn-gold:hover{background:rgba(204,255,0,.2);box-shadow:0 0 16px rgba(204,255,0,.3)}
+
+.btn-red{
+  background:rgba(255,45,85,.1);border-color:var(--red);color:var(--red);
+}
+.btn-red:hover{background:rgba(255,45,85,.2)}
+
+.btn-ghost{
+  background:transparent;border-color:var(--bord);color:var(--gtxt2);
+}
+.btn-ghost:hover{border-color:var(--gdim);color:var(--gtext)}
+
+.btn-sm{padding:3px 8px;font-size:.68rem}
+.btn-full{width:100%}
+.xbtn{
+  background:transparent;border:none;color:var(--gtxt2);cursor:pointer;
+  font-size:.7rem;padding:3px 6px;border-radius:3px;font-family:inherit;
+}
+.xbtn:hover{color:var(--red)}
+
+/* ─── TICKER ─── */
+#ticker{
+  height:44px;background:#020802;
+  border-top:2px solid var(--g0);
+  box-shadow:0 -2px 16px rgba(0,255,65,.2);
+  overflow:hidden;display:flex;align-items:center;flex-shrink:0;
+}
+#ttrack{display:inline-flex;white-space:nowrap;animation:tick linear infinite}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ti{
+  display:inline-flex;align-items:center;gap:4px;padding:0 16px;
+  font-size:1rem;font-weight:700;letter-spacing:1px;font-family:inherit;
+}
+.ti.up  {color:var(--g0);text-shadow:0 0 6px var(--g0)}
+.ti.down{color:var(--red);text-shadow:0 0 6px var(--red)}
+.ti.neu {color:var(--gtxt2)}
+.ti-rt{font-size:.6rem;color:var(--g3);margin-left:1px}
+.ti-sep{color:var(--g4);padding:0 2px;font-size:1rem}
+
+/* ─── MODAL ─── */
+#mbg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,5,0,.88);z-index:200;
+  align-items:center;justify-content:center;
+}
+#mbg.open{display:flex}
+#modal{
+  background:var(--bg2);border:1px solid var(--g0);border-radius:6px;
+  width:min(820px,95vw);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 0 40px rgba(0,255,65,.2),0 24px 60px rgba(0,0,0,.8);
+  overflow:hidden;
+}
+#mhdr{
+  padding:12px 16px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:8px;
+}
+#mhdr h2{font-size:.95rem;color:var(--g0);letter-spacing:2px;flex:1;font-family:inherit}
+#mtabs{
+  display:flex;background:var(--bg3);border-bottom:1px solid var(--bord);overflow-x:auto;
+}
+.mt{
+  padding:9px 14px;cursor:pointer;font-size:.68rem;color:var(--gtxt2);
+  border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:1px;
+  font-family:inherit;transition:color .15s;
+}
+.mt.active{color:var(--g0);border-bottom-color:var(--g0)}
+.mt:hover{color:var(--gtext)}
+#mbody{flex:1;overflow-y:auto;padding:14px 16px}
+
+/* settings */
+.ss{margin-bottom:18px}
+.ss h3{font-size:.6rem;letter-spacing:2.5px;color:var(--gtxt2);
+  text-transform:uppercase;margin-bottom:8px;font-family:inherit}
+.si{
+  background:var(--bg3);border:1px solid var(--bord);
+  border-radius:4px;padding:9px;margin-bottom:6px;
+}
+.sr2{display:flex;gap:5px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
+.sr2:last-child{margin-bottom:0}
+.sr2 label{font-size:.7rem;color:var(--gtxt2);white-space:nowrap;font-family:inherit}
+.sr2 input[type=text],
+.sr2 input[type=number],
+.sr2 textarea,
+.sr2 select{
+  background:var(--bg);border:1px solid var(--bord);
+  color:var(--gtext);border-radius:3px;padding:4px 7px;
+  font-size:.76rem;font-family:inherit;
+}
+.sr2 input[type=text]{flex:1;min-width:70px}
+.sr2 input[type=number]{width:70px}
+.sr2 textarea{flex:1;resize:vertical;min-height:42px;font-size:.74rem}
+.sr2 select{flex:1}
+.er{display:flex;gap:4px;align-items:center;margin-bottom:3px;flex-wrap:wrap}
+.er select,.er input{
+  background:var(--bg);border:1px solid var(--bord);
+  color:var(--gtext);border-radius:3px;padding:3px 5px;font-size:.72rem;font-family:inherit;
+}
+.er select{flex:1;min-width:80px}
+.er input[type=number]{width:58px}
+.er-lbl{font-size:.68rem;color:var(--gtxt2)}
+
+/* ─── EVENT OVERLAY ─── */
+#evbg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,5,0,.85);z-index:300;
+  align-items:center;justify-content:center;
+}
+#evbg.open{display:flex}
+#evpop{
+  max-width:460px;width:92vw;
+  background:var(--bg2);border:2px solid var(--g0);
+  border-radius:8px;padding:30px 24px;text-align:center;
+  box-shadow:0 0 40px rgba(0,255,65,.3);
+  animation:pop .3s cubic-bezier(.34,1.56,.64,1);
+}
+#evpop.positive{border-color:var(--g0);box-shadow:0 0 40px rgba(0,255,65,.35)}
+#evpop.negative{border-color:var(--red);box-shadow:0 0 40px rgba(255,45,85,.35)}
+#evpop.neutral {border-color:var(--gold);box-shadow:0 0 30px rgba(204,255,0,.25)}
+@keyframes pop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+#ep-ico{font-size:3rem;margin-bottom:10px;filter:drop-shadow(0 0 10px var(--g0))}
+#ep-name{font-size:1.7rem;font-weight:900;color:var(--g0);margin-bottom:8px;
+  text-shadow:0 0 20px var(--g0);letter-spacing:1px;font-family:inherit}
+#evpop.negative #ep-name{color:var(--red);text-shadow:0 0 20px var(--red)}
+#evpop.neutral  #ep-name{color:var(--gold);text-shadow:0 0 20px var(--gold)}
+#ep-desc{font-size:.9rem;color:var(--gtxt2);margin-bottom:16px;line-height:1.55;font-family:inherit}
+#ep-fx{font-size:1.1rem;font-weight:700;margin-bottom:20px;line-height:1.9;font-family:inherit}
+
+/* ─── SPARK POPUP ─── */
+#sppop{
+  display:none;position:fixed;
+  background:var(--bg2);border:1px solid var(--g0);border-radius:6px;
+  padding:14px;z-index:150;min-width:310px;
+  box-shadow:0 0 24px rgba(0,255,65,.2),0 8px 40px rgba(0,0,0,.7);
+}
+#sppop h3{font-size:.85rem;color:var(--g0);margin-bottom:8px;letter-spacing:2px;font-family:inherit}
+#spinfo{margin-top:6px;font-size:.68rem;color:var(--gtxt2);font-family:inherit;line-height:1.6}
+
+/* ─── JSON SAVE/LOAD MODAL ─── */
+#jmbg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,5,0,.88);z-index:400;
+  align-items:center;justify-content:center;
+}
+#jmbg.open{display:flex}
+#jmodal{
+  background:var(--bg2);border:1px solid var(--g2);border-radius:6px;
+  width:min(600px,94vw);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 0 30px rgba(0,255,65,.15);overflow:hidden;
+}
+#jmhdr{
+  padding:11px 15px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:8px;
+}
+#jmhdr h2{font-size:.9rem;color:var(--g0);letter-spacing:2px;flex:1;font-family:inherit}
+#jmbody{padding:14px;display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto}
+#jmbody textarea{
+  background:var(--bg);border:1px solid var(--bord);
+  color:var(--g1);border-radius:4px;padding:10px;
+  font-size:.72rem;font-family:'Courier New',monospace;
+  resize:vertical;min-height:200px;outline:none;line-height:1.5;
+}
+#jmbody textarea:focus{border-color:var(--g2)}
+.jm-note{font-size:.72rem;color:var(--gtxt2);line-height:1.5;font-family:inherit}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--g4);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--g3)}
+
+/* ─── RANGE ─── */
+input[type=range]{
+  -webkit-appearance:none;height:3px;background:var(--bord);
+  border-radius:2px;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  background:var(--g0);border-radius:50%;cursor:pointer;
+}
+
+/* ─── UTILS ─── */
+.flex{display:flex;gap:6px;align-items:center}
+.wrap{flex-wrap:wrap}
+.sep{flex:1}
+.mgt{margin-top:5px}
+.glow{text-shadow:0 0 10px var(--g0)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div id="hdr-logo">
+    <span class="robot">🤖</span>
+    <div id="hdr-title">
+      КРИПТОБИРЖА
+      <span>РОБОГРАДА</span>
+    </div>
+  </div>
+  <div class="hdr-sep"></div>
+  <div id="period-box">
+    <div class="plabel">ПЕРИОД</div>
+    <div class="pnum" id="pnum">0</div>
+  </div>
+  <div class="hdr-sep"></div>
+  <div id="hdr-btns">
+    <button class="hb" id="btn-rp"    title="Панель ведущего">🎮</button>
+    <button class="hb" id="btn-save"  title="Сохранить/загрузить состояние">💾</button>
+    <button class="hb" id="btn-cfg"   title="Настройки">⚙️</button>
+    <button class="hb" id="btn-fs"    title="Полный экран (F11)">⛶</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- LEFT: таблица + новости -->
+  <div id="left">
+    <div id="tbl-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>АКТИВ</th>
+            <th>ЦЕНА&nbsp;<small style="font-size:.5rem;opacity:.6">РТ</small></th>
+            <th>ИЗМЕНЕНИЕ</th>
+            <th>%</th>
+            <th style="width:90px">ГРАФИК</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="news-wrap"><div id="newsi"></div></div>
+  </div>
+
+  <!-- RIGHT: панель ведущего -->
+  <div id="rpanel">
+    <div id="rpi">
+      <div class="rp-hd">[ ПАНЕЛЬ ВЕДУЩЕГО ]</div>
+
+      <button class="btn btn-gold btn-full" id="btn-ev">🎲 СЛУЧАЙНОЕ СОБЫТИЕ</button>
+
+      <div id="evc"></div>
+
+      <div>
+        <div class="rp-hd" style="margin-bottom:7px">Изменения периода</div>
+        <div id="chlist"></div>
+        <button class="btn btn-ghost btn-sm btn-full mgt" id="btn-addch">+ строка</button>
+      </div>
+
+      <button class="btn btn-apply btn-full" id="btn-apply">▶ ПРИМЕНИТЬ ПЕРИОД</button>
+
+      <div>
+        <div class="flex" style="margin-bottom:5px">
+          <span class="rp-hd" style="border:none;padding:0">История</span>
+          <button class="hb" id="btn-htog" style="width:24px;height:20px;font-size:.65rem;margin-left:auto">▼</button>
+        </div>
+        <div id="histlist"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div id="ticker"><div id="ttrack"></div></div>
+
+<!-- EVENT OVERLAY -->
+<div id="evbg">
+  <div id="evpop">
+    <div id="ep-ico"></div>
+    <div id="ep-name"></div>
+    <div id="ep-desc"></div>
+    <div id="ep-fx"></div>
+    <button class="btn btn-green" id="btn-evok" style="min-width:160px">[ ПРИНЯТЬ ]</button>
+  </div>
+</div>
+
+<!-- SPARK POPUP -->
+<div id="sppop">
+  <h3 id="sp-title"></h3>
+  <canvas id="sp-cv" width="420" height="200"></canvas>
+  <div id="spinfo"></div>
+  <button class="btn btn-ghost btn-sm mgt" onclick="closeSpark()">[ ЗАКРЫТЬ ]</button>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="mbg">
+  <div id="modal">
+    <div id="mhdr">
+      <h2>[ КОНФИГУРАЦИЯ ]</h2>
+      <button class="hb" id="btn-mclose">✕</button>
+    </div>
+    <div id="mtabs">
+      <div class="mt active" data-tab="stocks">АКТИВЫ</div>
+      <div class="mt" data-tab="events">СОБЫТИЯ</div>
+      <div class="mt" data-tab="tmpl">НОВОСТИ</div>
+      <div class="mt" data-tab="general">СИСТЕМА</div>
+    </div>
+    <div id="mbody"></div>
+  </div>
+</div>
+
+<!-- JSON SAVE/LOAD MODAL -->
+<div id="jmbg">
+  <div id="jmodal">
+    <div id="jmhdr">
+      <h2>[ УПРАВЛЕНИЕ СОСТОЯНИЕМ ]</h2>
+      <button class="hb" id="btn-jmclose">✕</button>
+    </div>
+    <div id="jmbody">
+      <div class="jm-note">
+        📋 <strong style="color:var(--g0)">Сохранить:</strong> скопируйте JSON ниже или скачайте файл.
+        Вставьте его в следующей сессии для продолжения игры.<br>
+        📂 <strong style="color:var(--g0)">Загрузить:</strong> замените текст на сохранённый JSON и нажмите «Загрузить».
+      </div>
+      <textarea id="jmta" placeholder="JSON состояния..."></textarea>
+      <div class="flex wrap" style="gap:6px">
+        <button class="btn btn-green btn-sm" id="btn-jmload">[ ЗАГРУЗИТЬ ]</button>
+        <button class="btn btn-ghost btn-sm" id="btn-jmcopy">📋 КОПИРОВАТЬ</button>
+        <button class="btn btn-ghost btn-sm" id="btn-jmdl">⬇ СКАЧАТЬ .JSON</button>
+        <button class="btn btn-red btn-sm"   id="btn-jmreset">🔄 СБРОС ИГРЫ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  DEFAULTS
+// ════════════════════════════════════════════════════════════
+
+const DEF_STOCKS = [
+  {id:'s1', name:'НЕЙРОЗАВОД',        ticker:'NZD',startPrice:100},
+  {id:'s2', name:'АГРОФЕРМА-7',       ticker:'AF7',startPrice:80},
+  {id:'s3', name:'КРИПТОБАНК',        ticker:'KBK',startPrice:150},
+  {id:'s4', name:'МЕГАМАРКЕТ',        ticker:'MMK',startPrice:60},
+  {id:'s5', name:'ШАХТА-АЛЬФА',       ticker:'SHA',startPrice:120},
+  {id:'s6', name:'ЭНЕРГО-СЕТ',        ticker:'ENS',startPrice:90},
+  {id:'s7', name:'ТРАНСПОРТОН',       ticker:'TRN',startPrice:75},
+  {id:'s8', name:'МАЙНДШТОРМ Inc.',   ticker:'MSI',startPrice:100},
+  {id:'s9', name:'РУДКОИН',           ticker:'RDF',startPrice:20},
+  {id:'s10',name:'КОСМОПОРТ-ПУЛКОВО', ticker:'CSP',startPrice:60},
+];
+
+const DEF_EVENTS = [
+  {id:'e1', name:'ПРОТОКОЛ РОСТА',       desc:'Алгоритм центробанка вводит режим экономического буста. Все активы растут.',      type:'positive',effects:[{target:'all',val:10,pct:true}]},
+  {id:'e2', name:'СИСТЕМНЫЙ СБОЙ',       desc:'Масштабный крипто-кризис накрывает рынок. Паника среди инвесторов.',             type:'negative',effects:[{target:'all',val:-15,pct:true}]},
+  {id:'e3', name:'УРОЖАЙНЫЙ ПРОТОКОЛ',   desc:'Алгоритм агрофермы зафиксировал рекордный сбор данных. Профит!',                type:'positive',effects:[{target:'s2',val:25,pct:false}]},
+  {id:'e4', name:'ПОЖАР В НЕЙРОСЕТИ',    desc:'Критический перегрев серверов завода. Часть мощностей уничтожена.',              type:'negative',effects:[{target:'s1',val:-30,pct:false}]},
+  {id:'e5', name:'БАНКОВСКАЯ ПАНИКА',    desc:'Слухи о взломе криптобанка вызвали волну панических продаж.',                   type:'negative',effects:[{target:'s3',val:-35,pct:false}]},
+  {id:'e6', name:'MEGA SALE',            desc:'Мегамаркет запустил распродажу эпического масштаба. Выручка взлетела.',          type:'positive',effects:[{target:'s4',val:30,pct:false}]},
+  {id:'e7', name:'ЛАЗЕРНЫЙ БУРОВОЙ',     desc:'Шахта-Альфа применила квантовое бурение. Новые залежи!',                       type:'positive',effects:[{target:'s5',val:40,pct:false}]},
+  {id:'e8', name:'БЛЭКАУТ',              desc:'Авария на энергосети оставила половину Робограда без питания.',                  type:'negative',effects:[{target:'s6',val:-25,pct:false}]},
+  {id:'e9', name:'РОБОТЕЖА',             desc:'Роботы-инсайдеры массово скупают акции завода и шахты.',                       type:'positive',effects:[{target:'s1',val:20,pct:false},{target:'s5',val:15,pct:false}]},
+  {id:'e10',name:'ТРАНСПОРТНЫЙ ХАОС',     desc:'Автопилоты устроили забастовку. Логистика парализована.',                                              type:'negative',effects:[{target:'s7',val:-10,pct:false},{target:'s4',val:-7,pct:false},{target:'s10',val:-5,pct:false}]},
+  {id:'e11',name:'СТАЗИС',               desc:'Рынок замер. Инвесторы ждут сигнала от Главного Алгоритма.',                                             type:'neutral', effects:[]},
+  {id:'e12',name:'МАЛЫЙ БУСТ',           desc:'Лёгкий оптимизм толкает котировки чуть вверх.',                                                          type:'positive',effects:[{target:'all',val:5,pct:true}]},
+  {id:'e13',name:'СПАСИБО ДЕДУ ЗА ПОБЕДУ',   desc:'Александр Рудольфович нашёл наследство и распродаёт награды деда.',                                 type:'positive',effects:[{target:'s9',val:10,pct:false}]},
+  {id:'e14',name:'БЕСПИЛОТНАЯ ОПАСНОСТЬ', desc:'В связи с полётами БПЛА, КОСМОПОРТ-ПУЛКОВО закрыт на приём судов из других галактик.',                 type:'negative',effects:[{target:'s10',val:-5,pct:false}]},
+  {id:'e15',name:'ПРОРЫВ В БРЕЙНДАНСЕ',  desc:'Новые открытия корпорации МАЙНДШТОРМС благоприятно влияют на оценки компании.',                        type:'positive',effects:[{target:'s8',val:10,pct:false}]},
+];
+
+const DEF_TMPL = {
+  up:[
+    '{name} наращивает мощности — роботокены потекли рекой!',
+    'Инвесторы скупают {name}: алгоритм предсказал рост',
+    '{name} подписал контракт с Главным Алгоритмом',
+    '{name} бьёт рекорды по роботокенам',
+    'Нейросеть советует: покупай {name}!',
+    'Позитивный хэш приносит {name} прибыль',
+    '{name} обновил прошивку — эффективность +200%',
+  ],
+  down:[
+    '{name} теряет роботокены после сбоя в системе',
+    'Инвесторы сбрасывают {name} — алгоритм в панике',
+    '{name} зафиксировал убытки. Роботы расстроены.',
+    'Глитч в протоколе {name} давит на котировки',
+    'Нейросеть советует: продавай {name}!',
+    '{name} объявил о техническом обслуживании',
+    'Крипто-скандал обрушил акции {name}',
+  ]
+};
+
+// ════════════════════════════════════════════════════════════
+//  STATE  (только в памяти — никакого localStorage!)
+// ════════════════════════════════════════════════════════════
+
+function mkState(){
+  return {
+    period:0,
+    stocks: DEF_STOCKS.map(s=>({...s,price:s.startPrice,prev:s.startPrice,hist:[s.startPrice]})),
+    events: DEF_EVENTS.map(e=>({...e,effects:e.effects.map(x=>({...x}))})),
+    tmpl:   {up:[...DEF_TMPL.up],down:[...DEF_TMPL.down]},
+    news:   [],
+    phist:  [],
+    cfg:    {speed:45,histVis:true},
+    pendEv: null,
+  };
+}
+
+let G = mkState();
+// pending changes (UI-only)
+let PC = [{sid:G.stocks[0].id,delta:0}];
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════════
+
+const uid  = () => 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const rand = a  => a[Math.floor(Math.random()*a.length)];
+const sgn  = v  => v>0?'+':'';
+const dir  = (c,p) => c>p?'up':c<p?'down':'neu';
+const arr  = (c,p) => c>p?'▲':c<p?'▼':'—';
+const pct  = (c,p) => p===0?'—':((c-p)/p*100).toFixed(1)+'%';
+const pcts = (c,p) => { const v=((c-p)/p*100).toFixed(1); return (v>0?'+':'')+v+'%'; };
+const esc  = s   => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function mkNews(name,delta){
+  const t = delta>0 ? rand(G.tmpl.up) : rand(G.tmpl.down);
+  return t.replace(/\{name\}/g,name);
+}
+
+// ════════════════════════════════════════════════════════════
+//  APPLY PERIOD
+// ════════════════════════════════════════════════════════════
+
+function applyPeriod(){
+  syncPC();
+  G.period++;
+  const changed=[];
+
+  // manual changes
+  PC.forEach(({sid,delta})=>{
+    if(!sid||delta===0) return;
+    const st=G.stocks.find(s=>s.id===sid); if(!st) return;
+    st.prev=st.price; st.price=Math.max(1,st.price+delta); st.hist.push(st.price);
+    changed.push({sid,name:st.name,delta,price:st.price});
+    G.news.unshift({p:G.period,text:mkNews(st.name,delta),type:delta>0?'positive':'negative'});
+  });
+
+  // event
+  if(G.pendEv){
+    const ev=G.pendEv;
+    ev.effects.forEach(eff=>{
+      const tgts = eff.target==='all' ? G.stocks : G.stocks.filter(s=>s.id===eff.target);
+      tgts.forEach(st=>{
+        st.prev=st.price;
+        const d = eff.pct ? Math.round(st.price*eff.val/100) : eff.val;
+        st.price=Math.max(1,st.price+d); st.hist.push(st.price);
+        changed.push({sid:st.id,name:st.name,delta:d,price:st.price});
+      });
+    });
+    G.news.unshift({p:G.period,text:'[СОБЫТИЕ] '+ev.name+': '+ev.desc,type:'event'});
+    G.pendEv=null;
+    document.getElementById('evc').style.display='none';
+  }
+
+  // unchanged → push to hist
+  G.stocks.forEach(st=>{
+    if(!changed.some(c=>c.sid===st.id)){st.prev=st.price;st.hist.push(st.price)}
+  });
+
+  G.phist.unshift({period:G.period,changes:changed});
+  PC=[{sid:G.stocks[0]?.id||'',delta:0}];
+  render(); flashRows(changed);
+}
+
+function flashRows(changed){
+  changed.forEach(({sid,delta})=>{
+    const row=document.querySelector(`[data-sid="${sid}"]`); if(!row) return;
+    row.classList.remove('flash-up','flash-dn'); void row.offsetWidth;
+    row.classList.add(delta>0?'flash-up':'flash-dn');
+    setTimeout(()=>row.classList.remove('flash-up','flash-dn'),800);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  RANDOM EVENT
+// ════════════════════════════════════════════════════════════
+
+function randEvent(){
+  if(!G.events.length) return;
+  const ev=rand(G.events);
+  G.pendEv=ev;
+
+  const pop=document.getElementById('evpop');
+  pop.className=ev.type;
+  const icons={positive:'📈',negative:'⚠️',neutral:'🤖'};
+  document.getElementById('ep-ico').textContent=icons[ev.type]||'📊';
+  document.getElementById('ep-ico').style.filter=
+    ev.type==='negative'?'drop-shadow(0 0 10px #ff2d55)':
+    ev.type==='neutral' ?'drop-shadow(0 0 10px #ccff00)':
+    'drop-shadow(0 0 10px #00ff41)';
+  document.getElementById('ep-name').textContent=ev.name;
+  document.getElementById('ep-desc').textContent=ev.desc;
+
+  const lines=ev.effects.map(eff=>{
+    const tname=eff.target==='all'?'ВСЕ АКТИВЫ':(G.stocks.find(s=>s.id===eff.target)?.name||'?');
+    return `${eff.val>0?'▲':'▼'} ${tname}: ${sgn(eff.val)}${eff.val}${eff.pct?'%':' РТ'}`;
+  }).join('\n');
+  document.getElementById('ep-fx').textContent=lines||'— без изменений цен —';
+
+  document.getElementById('evbg').classList.add('open');
+}
+
+function showEvCard(ev){
+  const c=document.getElementById('evc');
+  c.style.display='block'; c.className=ev.type;
+  c.innerHTML=`<div class="etc">⚡ ${esc(ev.name)}</div><div class="etd">${esc(ev.desc)}</div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+
+function render(){
+  renderTable(); renderTicker(); renderNews();
+  renderChanges(); renderHistory();
+  document.getElementById('pnum').textContent=G.period;
+}
+
+function renderTable(){
+  const tb=document.getElementById('tbody'); tb.innerHTML='';
+  G.stocks.forEach(st=>{
+    const d=dir(st.price,st.prev), a=arr(st.price,st.prev), dv=st.price-st.prev;
+    const tr=document.createElement('tr');
+    tr.className='sr '+d; tr.dataset.sid=st.id;
+    tr.innerHTML=`
+      <td><div class="sname">${esc(st.name)}</div><div class="sticker">${esc(st.ticker)}</div></td>
+      <td><span class="sprice">${st.price}</span> <span class="srt">РТ</span></td>
+      <td class="schg ${d}">${dv!==0?(sgn(dv)+dv+' '+a):'—'}</td>
+      <td class="schg ${d}">${dv!==0?pcts(st.price,st.prev):'—'}</td>
+      <td><canvas class="spark" width="82" height="30" onclick="openSpark('${st.id}')" title="График ${esc(st.name)}"></canvas></td>
+    `;
+    tb.appendChild(tr);
+    drawSpark(tr.querySelector('canvas'),st.hist,d);
+  });
+}
+
+function drawSpark(cv,data,d){
+  if(!cv||data.length<2) return;
+  const ctx=cv.getContext('2d'),w=cv.width,h=cv.height;
+  ctx.clearRect(0,0,w,h);
+  const mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;
+  const c=d==='up'?'#00ff41':d==='down'?'#ff2d55':'#3a6b3a';
+  ctx.strokeStyle=c; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=(i/(data.length-1))*w, y=h-((v-mn)/rng)*(h-4)-2;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath();
+  ctx.fillStyle=c+'18'; ctx.fill();
+}
+
+function renderTicker(){
+  const track=document.getElementById('ttrack');
+  const items=G.stocks.map(st=>{
+    const d=dir(st.price,st.prev), a=arr(st.price,st.prev);
+    return `<span class="ti ${d}">${esc(st.ticker)}&nbsp;${st.price}<span class="ti-rt">РТ</span>&nbsp;${a}</span><span class="ti-sep">◆</span>`;
+  }).join('');
+  track.innerHTML=items+items;
+  requestAnimationFrame(()=>{
+    const totalW=track.scrollWidth/2;
+    track.style.animationDuration=(totalW/(G.cfg.speed||45))+'s';
+  });
+}
+
+function renderNews(){
+  const inner=document.getElementById('newsi');
+  if(!G.news.length){
+    inner.innerHTML='<div style="color:var(--gtxt2);font-size:.72rem;padding:5px 4px;font-family:inherit">// ЛЕНТА ПУСТА. ПРИМЕНЯЙТЕ ПЕРИОДЫ ДЛЯ ГЕНЕРАЦИИ НОВОСТЕЙ.</div>';
+    return;
+  }
+  inner.innerHTML=G.news.slice(0,40).map(n=>
+    `<div class="ni ${n.type}"><span class="ni-meta">П${n.p}▶</span>${esc(n.text)}</div>`
+  ).join('');
+}
+
+function renderChanges(){
+  const list=document.getElementById('chlist'); list.innerHTML='';
+  PC.forEach((ch,i)=>{
+    const div=document.createElement('div'); div.className='chr';
+    const opts=G.stocks.map(s=>`<option value="${s.id}"${s.id===ch.sid?' selected':''}>${esc(s.name)}</option>`).join('');
+    div.innerHTML=`
+      <select class="ch-sel">${opts}</select>
+      <input type="number" class="ch-dlt" value="${ch.delta||0}" placeholder="±0">
+      <button class="xbtn" onclick="rmCh(${i})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function renderHistory(){
+  const hl=document.getElementById('histlist');
+  if(!G.cfg.histVis){hl.style.display='none';return}
+  hl.style.display='flex';
+  hl.innerHTML=G.phist.slice(0,12).map(p=>{
+    const txt=p.changes.length
+      ? p.changes.map(c=>`${c.name}&nbsp;${sgn(c.delta)}${c.delta}`).join(',&nbsp;')
+      : '— стазис —';
+    return `<div class="hi"><strong>П${p.period}:</strong>&nbsp;${txt}</div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  CHANGES UI
+// ════════════════════════════════════════════════════════════
+
+function syncPC(){
+  PC=[];
+  document.querySelectorAll('.chr').forEach(r=>{
+    PC.push({sid:r.querySelector('.ch-sel').value,delta:parseInt(r.querySelector('.ch-dlt').value)||0});
+  });
+}
+function addCh(){syncPC();PC.push({sid:G.stocks[0]?.id||'',delta:0});renderChanges()}
+function rmCh(i){syncPC();PC.splice(i,1);if(!PC.length)PC=[{sid:G.stocks[0]?.id||'',delta:0}];renderChanges()}
+
+// ════════════════════════════════════════════════════════════
+//  SPARK POPUP
+// ════════════════════════════════════════════════════════════
+
+function openSpark(sid){
+  const st=G.stocks.find(s=>s.id===sid); if(!st) return;
+  document.getElementById('sp-title').textContent=st.name+' ('+st.ticker+')';
+  drawDetailChart(document.getElementById('sp-cv'),st);
+  const mn=Math.min(...st.hist),mx=Math.max(...st.hist);
+  document.getElementById('spinfo').textContent=
+    `СТАРТ: ${st.startPrice} РТ  │  МИН: ${mn}  │  МАКС: ${mx}  │  СЕЙЧАС: ${st.price} РТ`;
+  const p=document.getElementById('sppop');
+  p.style.cssText='display:block;left:50%;top:50%;transform:translate(-50%,-50%)';
+}
+function closeSpark(){document.getElementById('sppop').style.display='none'}
+
+function drawDetailChart(cv,st){
+  const ctx=cv.getContext('2d'),w=cv.width,h=cv.height;
+  ctx.clearRect(0,0,w,h);
+  const data=st.hist; if(data.length<1) return;
+
+  // ── "умный" масштаб Y с круглыми числами ──
+  function niceStep(rawRange){
+    const exp=Math.pow(10,Math.floor(Math.log10(rawRange||1)));
+    const f=rawRange/exp;
+    return f<=1?exp*.2:f<=2?exp*.5:f<=5?exp:exp*2;
+  }
+  const rawMin=Math.min(...data), rawMax=Math.max(...data);
+  const step=niceStep((rawMax-rawMin)||rawMax*.2||10);
+  const yMin=Math.floor(Math.max(0,rawMin-step)/step)*step;
+  const yMax=Math.ceil((rawMax+step*.4)/step)*step;
+  const yRange=yMax-yMin||1;
+
+  const pL=44,pR=10,pT=18,pB=24;
+  const cw=w-pL-pR, ch=h-pT-pB;
+
+  const toX=i=>pL+(i/Math.max(data.length-1,1))*cw;
+  const toY=v=>pT+ch-((v-yMin)/yRange)*ch;
+
+  // ── горизонтальные линии сетки с подписями ──
+  ctx.font='9px Courier New'; ctx.textAlign='right';
+  for(let v=yMin;v<=yMax+.001;v+=step){
+    const y=toY(v);
+    ctx.strokeStyle='#0f2a0f'; ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(w-pR,y);ctx.stroke();
+    ctx.fillStyle='#2a6a2a';
+    ctx.fillText(Math.round(v),pL-3,y+3.5);
+  }
+
+  // ── стартовая цена — пунктирная линия ──
+  const sy=toY(st.startPrice);
+  if(sy>=pT && sy<=pT+ch){
+    ctx.strokeStyle='#1a5a1a'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(pL,sy);ctx.lineTo(w-pR,sy);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#1a6a1a'; ctx.textAlign='left'; ctx.font='8px Courier New';
+    ctx.fillText('СТАРТ '+st.startPrice,pL+2,sy-3);
+  }
+  ctx.setLineDash([]);
+
+  // ── цвет линии ──
+  const d=dir(st.price,st.prev);
+  const col=d==='up'?'#00ff41':d==='down'?'#ff2d55':'#3a6b3a';
+
+  // ── заливка ──
+  if(data.length>1){
+    ctx.beginPath();
+    data.forEach((v,i)=>{ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)) });
+    ctx.lineTo(toX(data.length-1),toY(yMin));
+    ctx.lineTo(toX(0),toY(yMin));
+    ctx.closePath(); ctx.fillStyle=col+'1a'; ctx.fill();
+  }
+
+  // ── линия цены ──
+  ctx.strokeStyle=col; ctx.lineWidth=2; ctx.setLineDash([]);
+  ctx.beginPath();
+  data.forEach((v,i)=>{ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)) });
+  ctx.stroke();
+
+  // ── точки + цена над каждой точкой ──
+  const showLabels=data.length<=20;
+  ctx.textAlign='center';
+  data.forEach((v,i)=>{
+    const x=toX(i),y=toY(v);
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(x,y,data.length<=12?3.5:2.5,0,Math.PI*2);ctx.fill();
+    if(showLabels){
+      ctx.font='bold 9px Courier New';
+      // фон под цифрой
+      const lbl=String(v);
+      const tw=ctx.measureText(lbl).width;
+      ctx.fillStyle='rgba(6,13,6,.75)';
+      ctx.fillRect(x-tw/2-1,y-17,tw+2,11);
+      ctx.fillStyle=col;
+      ctx.fillText(lbl,x,y-8);
+    }
+  });
+
+  // ── метки периодов по X ──
+  ctx.fillStyle='#2a5a2a'; ctx.font='9px Courier New'; ctx.textAlign='center';
+  data.forEach((_,i)=>{
+    // не рисуем каждую, если точек много
+    if(data.length>20 && i%5!==0) return;
+    ctx.fillText('П'+i,toX(i),h-6);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  JSON SAVE / LOAD
+// ════════════════════════════════════════════════════════════
+
+function openJM(){
+  document.getElementById('jmta').value=JSON.stringify(G,null,2);
+  document.getElementById('jmbg').classList.add('open');
+}
+function closeJM(){document.getElementById('jmbg').classList.remove('open')}
+
+function loadFromJSON(){
+  try{
+    const imp=JSON.parse(document.getElementById('jmta').value);
+    if(!imp.stocks||!Array.isArray(imp.stocks)) throw new Error('Нет поля stocks');
+    G=imp;
+    if(!G.cfg)   G.cfg={speed:45,histVis:true};
+    if(!G.phist) G.phist=[];
+    if(!G.news)  G.news=[];
+    if(!G.tmpl)  G.tmpl={up:[...DEF_TMPL.up],down:[...DEF_TMPL.down]};
+    G.stocks.forEach(st=>{if(!st.hist)st.hist=[st.startPrice]});
+    PC=[{sid:G.stocks[0]?.id||'',delta:0}];
+    render(); closeJM();
+  }catch(e){alert('ОШИБКА ПАРСИНГА: '+e.message)}
+}
+
+function copyJSON(){
+  navigator.clipboard.writeText(document.getElementById('jmta').value)
+    .then(()=>alert('JSON скопирован в буфер обмена'))
+    .catch(()=>alert('Ошибка копирования — выделите текст вручную (Ctrl+A, Ctrl+C)'));
+}
+
+function downloadJSON(){
+  const blob=new Blob([JSON.stringify(G,null,2)],{type:'application/json'});
+  const a=Object.assign(document.createElement('a'),{
+    href:URL.createObjectURL(blob),
+    download:`robograd-p${G.period}.json`
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+function resetGame(){
+  if(!confirm('СБРОС ИГРЫ? Все цены вернутся к стартовым, история будет удалена.')) return;
+  G=mkState(); PC=[{sid:G.stocks[0]?.id||'',delta:0}];
+  document.getElementById('evc').style.display='none';
+  document.getElementById('jmta').value=JSON.stringify(G,null,2);
+  render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SETTINGS MODAL
+// ════════════════════════════════════════════════════════════
+
+let activeTab='stocks';
+function openCfg(){document.getElementById('mbg').classList.add('open');drawTab(activeTab)}
+function closeCfg(){document.getElementById('mbg').classList.remove('open')}
+
+function drawTab(tab){
+  activeTab=tab;
+  document.querySelectorAll('.mt').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  const body=document.getElementById('mbody');
+  ({stocks:tabStocks,events:tabEvents,tmpl:tabTmpl,general:tabGeneral})[tab]?.(body);
+}
+
+// ── STOCKS ──
+function tabStocks(body){
+  const rows=G.stocks.map(st=>`
+    <div class="si">
+      <div class="sr2">
+        <label>НАЗВАНИЕ:</label>
+        <input type="text" value="${esc(st.name)}" oninput="updSt('${st.id}','name',this.value)">
+        <label>ТИКЕР:</label>
+        <input type="text" value="${esc(st.ticker)}" maxlength="5" style="width:55px;text-transform:uppercase" oninput="updSt('${st.id}','ticker',this.value.toUpperCase())">
+        <label>СТАРТ:</label>
+        <input type="number" value="${st.startPrice}" min="1" style="width:68px" oninput="updSt('${st.id}','startPrice',+this.value)">
+        <button class="btn btn-red btn-sm" onclick="delSt('${st.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+  body.innerHTML=`<div class="ss"><h3>ТОРГОВЫЕ АКТИВЫ (${G.stocks.length})</h3>${rows}
+    <button class="btn btn-green btn-sm mgt" onclick="addSt()">+ ДОБАВИТЬ АКТИВ</button></div>`;
+}
+function addSt(){
+  const sp=100;
+  G.stocks.push({id:uid(),name:'НОВЫЙ',ticker:'NEW',startPrice:sp,price:sp,prev:sp,hist:[sp]});
+  drawTab('stocks');render();
+}
+function delSt(id){if(G.stocks.length<=1){alert('Нельзя удалить последний актив');return}G.stocks=G.stocks.filter(s=>s.id!==id);drawTab('stocks');render()}
+function updSt(id,f,v){
+  const s=G.stocks.find(s=>s.id===id); if(!s) return;
+  const wasPristine = s.price===s.startPrice; // цена ещё не изменялась игрой
+  s[f]=v;
+  if(f==='startPrice' && wasPristine){ s.price=v; s.prev=v; s.hist=[v]; }
+  render();
+}
+
+// ── EVENTS ──
+function tabEvents(body){
+  const rows=G.events.map(ev=>{
+    const to=['positive','negative','neutral'].map(t=>
+      `<option value="${t}"${ev.type===t?' selected':''}>${t==='positive'?'ПОЗИТИВ':t==='negative'?'НЕГАТИВ':'НЕЙТРАЛ'}</option>`
+    ).join('');
+    const effs=ev.effects.map((eff,ei)=>{
+      const so=[`<option value="all"${eff.target==='all'?' selected':''}>ВСЕ АКТИВЫ</option>`,
+        ...G.stocks.map(s=>`<option value="${s.id}"${eff.target===s.id?' selected':''}>${esc(s.name)}</option>`)
+      ].join('');
+      return `<div class="er">
+        <select onchange="updEff('${ev.id}',${ei},'target',this.value)">${so}</select>
+        <span class="er-lbl">VAL:</span>
+        <input type="number" value="${eff.val}" style="width:58px" oninput="updEff('${ev.id}',${ei},'val',+this.value)">
+        <label style="display:flex;align-items:center;gap:3px;font-size:.7rem;color:var(--gtxt2);font-family:inherit">
+          <input type="checkbox" ${eff.pct?'checked':''} onchange="updEff('${ev.id}',${ei},'pct',this.checked)">%
+        </label>
+        <button class="btn btn-red btn-sm" onclick="delEff('${ev.id}',${ei})">✕</button>
+      </div>`;
+    }).join('');
+    return `<div class="si">
+      <div class="sr2">
+        <input type="text" value="${esc(ev.name)}" placeholder="НАЗВАНИЕ" oninput="updEv('${ev.id}','name',this.value)">
+        <select onchange="updEv('${ev.id}','type',this.value)">${to}</select>
+        <button class="btn btn-red btn-sm" onclick="delEv('${ev.id}')">✕</button>
+      </div>
+      <div class="sr2">
+        <textarea placeholder="Описание события..." oninput="updEv('${ev.id}','desc',this.value)">${esc(ev.desc)}</textarea>
+      </div>
+      ${effs}
+      <button class="btn btn-ghost btn-sm mgt" onclick="addEff('${ev.id}')">+ ЭФФЕКТ</button>
+    </div>`;
+  }).join('');
+  body.innerHTML=`<div class="ss"><h3>ПУЛ СОБЫТИЙ (${G.events.length})</h3>${rows}
+    <button class="btn btn-green btn-sm mgt" onclick="addEv()">+ ДОБАВИТЬ СОБЫТИЕ</button></div>`;
+}
+function addEv(){G.events.push({id:uid(),name:'НОВОЕ СОБЫТИЕ',desc:'Описание',type:'neutral',effects:[]});drawTab('events')}
+function delEv(id){G.events=G.events.filter(e=>e.id!==id);drawTab('events')}
+function updEv(id,f,v){const e=G.events.find(e=>e.id===id);if(e)e[f]=v}
+function addEff(eid){const e=G.events.find(e=>e.id===eid);if(e){e.effects.push({target:'all',val:10,pct:false});drawTab('events')}}
+function delEff(eid,i){const e=G.events.find(e=>e.id===eid);if(e){e.effects.splice(i,1);drawTab('events')}}
+function updEff(eid,i,f,v){const e=G.events.find(e=>e.id===eid);if(e&&e.effects[i])e.effects[i][f]=v}
+
+// ── TEMPLATES ──
+function tabTmpl(body){
+  const mkRow=(type,t,i)=>`<div class="sr2">
+    <input type="text" value="${esc(t)}" oninput="G.tmpl['${type}'][${i}]=this.value" style="flex:1">
+    <button class="btn btn-red btn-sm" onclick="delTpl('${type}',${i})">✕</button>
+  </div>`;
+  body.innerHTML=`
+    <div class="ss"><h3>ШАБЛОНЫ РОСТА ▲</h3>
+      <div style="font-size:.68rem;color:var(--gtxt2);margin-bottom:7px;font-family:inherit">Используйте <code style="background:var(--bg4);padding:1px 4px">{name}</code> для названия актива</div>
+      ${G.tmpl.up.map((t,i)=>mkRow('up',t,i)).join('')}
+      <button class="btn btn-ghost btn-sm mgt" onclick="addTpl('up')">+ ШАБЛОН</button>
+    </div>
+    <div class="ss"><h3>ШАБЛОНЫ ПАДЕНИЯ ▼</h3>
+      ${G.tmpl.down.map((t,i)=>mkRow('down',t,i)).join('')}
+      <button class="btn btn-ghost btn-sm mgt" onclick="addTpl('down')">+ ШАБЛОН</button>
+    </div>`;
+}
+function addTpl(t){G.tmpl[t].push('{name} — шаблон');drawTab('tmpl')}
+function delTpl(t,i){G.tmpl[t].splice(i,1);drawTab('tmpl')}
+
+// ── GENERAL ──
+function tabGeneral(body){
+  body.innerHTML=`
+    <div class="ss">
+      <h3>БЕГУЩАЯ СТРОКА</h3>
+      <div class="sr2">
+        <label>СКОРОСТЬ (px/s):</label>
+        <input type="range" min="10" max="200" value="${G.cfg.speed}"
+          oninput="G.cfg.speed=+this.value;document.getElementById('spd').textContent=this.value;renderTicker()">
+        <span id="spd" style="width:26px;font-size:.8rem">${G.cfg.speed}</span>
+      </div>
+    </div>
+    <div class="ss">
+      <h3>ДАННЫЕ ИГРЫ</h3>
+      <div class="flex wrap">
+        <button class="btn btn-green btn-sm" onclick="closeCfg();openJM()">💾 СОХРАНИТЬ / ЗАГРУЗИТЬ</button>
+      </div>
+      <div style="margin-top:10px;font-size:.7rem;color:var(--gtxt2);line-height:1.7;font-family:inherit">
+        ⚡ Данные хранятся только в памяти.<br>
+        ⚡ Нажмите 💾 чтобы экспортировать JSON-файл.<br>
+        ⚡ При следующем запуске импортируйте его обратно.<br>
+        ⚡ Или редактируйте JSON прямо в текстовом редакторе.
+      </div>
+    </div>
+    <div class="ss">
+      <h3>О СИСТЕМЕ</h3>
+      <div style="font-size:.72rem;color:var(--gtxt2);line-height:1.7;font-family:inherit">
+        КРИПТОБИРЖА РОБОГРАДА v2.0<br>
+        Один файл HTML. Без сервера. Без localStorage.<br>
+        Роботокены (РТ) — официальная валюта Робограда.
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  FULLSCREEN
+// ════════════════════════════════════════════════════════════
+
+function toggleFS(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+
+// ════════════════════════════════════════════════════════════
+//  WIRE-UP
+// ════════════════════════════════════════════════════════════
+
+document.getElementById('btn-apply').onclick = ()=>{syncPC();applyPeriod()};
+document.getElementById('btn-addch').onclick = addCh;
+document.getElementById('btn-ev').onclick    = randEvent;
+document.getElementById('btn-rp').onclick    = ()=>document.getElementById('rpanel').classList.toggle('hidden');
+document.getElementById('btn-save').onclick  = openJM;
+document.getElementById('btn-cfg').onclick   = openCfg;
+document.getElementById('btn-fs').onclick    = toggleFS;
+
+document.getElementById('btn-htog').onclick = ()=>{
+  G.cfg.histVis=!G.cfg.histVis;
+  document.getElementById('btn-htog').textContent=G.cfg.histVis?'▼':'▶';
+  renderHistory();
+};
+
+document.getElementById('btn-mclose').onclick = closeCfg;
+document.getElementById('mbg').addEventListener('click',e=>{if(e.target===document.getElementById('mbg'))closeCfg()});
+document.querySelectorAll('.mt').forEach(t=>t.onclick=()=>drawTab(t.dataset.tab));
+
+document.getElementById('btn-evok').onclick = ()=>{
+  document.getElementById('evbg').classList.remove('open');
+  if(G.pendEv) showEvCard(G.pendEv);
+};
+
+document.getElementById('btn-jmclose').onclick = closeJM;
+document.getElementById('btn-jmbg') && (document.getElementById('jmbg').addEventListener('click',e=>{if(e.target===document.getElementById('jmbg'))closeJM()}));
+document.getElementById('jmbg').addEventListener('click',e=>{if(e.target===document.getElementById('jmbg'))closeJM()});
+document.getElementById('btn-jmload').onclick  = loadFromJSON;
+document.getElementById('btn-jmcopy').onclick  = copyJSON;
+document.getElementById('btn-jmdl').onclick    = downloadJSON;
+document.getElementById('btn-jmreset').onclick = resetGame;
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='F11'){e.preventDefault();toggleFS()}
+  if(e.key==='Escape'){
+    closeCfg(); closeSpark();
+    document.getElementById('evbg').classList.remove('open');
+    closeJM();
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════════
+
+if(G.pendEv) showEvCard(G.pendEv);
+render();
+</script>
+</body>
+</html>
