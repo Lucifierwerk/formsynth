@@ -313,6 +313,20 @@ def _parse_load_data(data: list, form_id: str) -> ParsedForm:
                     logger.debug(f"Branching question '{q.title}': {branching}")
                 questions.append(q)
 
+        # If no options have explicit go_to_page, the form is linear and any
+        # negative values in page_transitions are parsing artifacts (non-navigation
+        # data in node[5] of PAGE_BREAK nodes).  Strip them so sequential
+        # fallback handles all inter-section navigation naturally.
+        has_option_branching = any(
+            o.go_to_page is not None for q in questions for o in q.options
+        )
+        if not has_option_branching:
+            page_transitions = {k: v for k, v in page_transitions.items() if v != -1}
+            if page_transitions:
+                logger.debug(f"Linear form — kept forward-only transitions: {page_transitions}")
+            else:
+                logger.debug("Linear form — page_transitions cleared, using sequential navigation")
+
         return ParsedForm(
             form_id=form_id,
             title=str(title).strip(),
