@@ -131,9 +131,20 @@ def _parse_go_to_page(opt: list, section_id_to_page: dict[int, int]) -> int | No
 
         # ── bare int: opt[idx] = section_id ──────────────────────────────
         if isinstance(nav, (int, float)):
-            r = _resolve_id(int(nav))
-            if r is not None:
-                return r
+            nav_int = int(nav)
+            if idx == 2:
+                # opt[2] holds a raw section_id only for branching options.
+                # Negative values here are NOT submit signals — they are
+                # unrelated data (e.g. ordering/type flags) and must be
+                # ignored to avoid false "submit form" navigation in
+                # linear multi-section forms.
+                target = section_id_to_page.get(nav_int)
+                if target is not None:
+                    return target
+            else:
+                r = _resolve_id(nav_int)
+                if r is not None:
+                    return r
 
         elif isinstance(nav, list) and nav:
             first = nav[0]
