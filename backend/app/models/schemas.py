@@ -12,6 +12,7 @@ class Option(BaseModel):
     value: str
     weight: int = 1
     enabled: bool = True
+    exclusive: bool = False  # if chosen in multi, no other options are added
     go_to_page: int | None = None  # target page index for branching (None = next page)
 
 

@@ -2,6 +2,7 @@ export interface Option {
   value: string
   weight: number
   enabled: boolean
+  exclusive: boolean  // if chosen in multi, excludes all other options
   go_to_page?: number | null  // target page index for branching (null = next page)
 }
 

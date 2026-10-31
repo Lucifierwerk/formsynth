@@ -41,27 +41,16 @@ PROFILES: dict[str, dict] = {
 # через UI на вкладке «Настройки» → карточка вопроса.
 
 DEFAULT_SHORT_TEXTS = [
-    #"Всё устраивает",
-    #"Хорошо",
-    #"Нормально",
-    #"Доволен(а)",
-    #"Неплохо",
-    #"Без замечаний",
-    #"Всё в порядке",
-    #"Удовлетворительно",
-    #"Да",
-    #"Нет",
-    "Детство",
-
-"чаепитие",
-
-"чай",
-
-"радость",
-
-"хруст",
-
-"угощение"
+    "Всё устраивает",
+    "Хорошо",
+    "Нормально",
+    "Доволен(а)",
+    "Неплохо",
+    "Без замечаний",
+    "Всё в порядке",
+    "Удовлетворительно",
+    "Да",
+    "Нет",
 ]
 
 DEFAULT_LONG_TEXTS = [
@@ -130,24 +119,39 @@ class ResponseGenerator:
         if not enabled:
             return []
 
-        raw_weights = [
-            w for o, w in zip(question.options, self._apply_profile_weights(question))
-            if o.enabled
-        ]
+        raw_weights = self._apply_profile_weights(question)
+        w_map = {o.value: w for o, w in zip(question.options, raw_weights) if o.enabled}
 
-        # Exclude weight=0 options; fall back to uniform only if all are zero
-        pool_with_w = [(o, w) for o, w in zip(enabled, raw_weights) if w > 0]
-        if not pool_with_w:
-            pool_with_w = [(o, 1) for o in enabled]
+        # Split into exclusive (solo answers) and regular options
+        excl = [(o, w_map[o.value]) for o in enabled if getattr(o, "exclusive", False)]
+        reg  = [(o, w_map[o.value]) for o in enabled if not getattr(o, "exclusive", False)]
 
-        k = random.randint(
-            min(question.min_select, len(pool_with_w)),
-            min(question.max_select, len(pool_with_w)),
-        )
+        excl_nz = [(o, w) for o, w in excl if w > 0]
+        reg_nz  = [(o, w) for o, w in reg  if w > 0]
 
-        # Weighted sample without replacement
+        # Fallback: if all weights are 0, treat enabled options as weight=1
+        if not excl_nz and not reg_nz:
+            reg_nz  = [(o, 1) for o, _ in reg]
+            excl_nz = [(o, 1) for o, _ in excl]
+
+        # Decide: exclusive option or regular multi-select?
+        if excl_nz:
+            total_excl = sum(w for _, w in excl_nz)
+            total_reg  = sum(w for _, w in reg_nz)
+            if random.random() < total_excl / (total_excl + total_reg):
+                opts, ws = zip(*excl_nz)
+                return [random.choices(list(opts), weights=list(ws), k=1)[0].value]
+
+        if not reg_nz:
+            return []
+
+        # Regular multi-select: enforce min/max bounds
+        min_k = max(1, question.min_select)
+        max_k = max(min_k, question.max_select)
+        pool  = list(reg_nz)
+        k = random.randint(min(min_k, len(pool)), min(max_k, len(pool)))
+
         chosen: list[str] = []
-        pool = list(pool_with_w)
         for _ in range(k):
             if not pool:
                 break

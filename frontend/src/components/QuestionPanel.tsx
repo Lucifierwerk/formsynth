@@ -13,9 +13,10 @@ const QTYPE_LABEL: Record<string, { label: string; color: string }> = {
 
 // ── Option row for single/multi questions ─────────────────────────────────────
 
-function OptionRow({ opt, onChange }: {
+function OptionRow({ opt, onChange, isMulti }: {
   opt: Option
   onChange: (patch: Partial<Option>) => void
+  isMulti?: boolean
 }) {
   const hasNav    = opt.go_to_page != null
   const excluded  = opt.enabled && opt.weight === 0   // enabled but weight=0 → never picked
@@ -37,6 +38,20 @@ function OptionRow({ opt, onChange }: {
         <span className="text-xs font-mono text-blue-400 shrink-0" title="Навигация к разделу">
           → р.{(opt.go_to_page ?? 0) + 1}
         </span>
+      )}
+      {isMulti && (
+        <button
+          title={opt.exclusive ? 'Эксклюзивный: при выборе отменяет остальные варианты' : 'Пометить как эксклюзивный (например, «Ничего из перечисленного»)'}
+          onClick={() => onChange({ exclusive: !opt.exclusive })}
+          className={clsx(
+            'shrink-0 text-xs px-1.5 py-0.5 rounded transition-colors border',
+            opt.exclusive
+              ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
+              : 'text-muted border-transparent hover:border-muted/40 hover:text-text'
+          )}
+        >
+          solo
+        </button>
       )}
       <div className="flex items-center gap-2 shrink-0">
         <input
@@ -337,7 +352,7 @@ function QuestionCard({ q }: { q: Question }) {
                 )}
               </div>
               {q.options.map((opt, i) => (
-                <OptionRow key={i} opt={opt} onChange={p => updateOption(i, p)} />
+                <OptionRow key={i} opt={opt} onChange={p => updateOption(i, p)} isMulti={q.qtype === 'multi'} />
               ))}
             </>
           )}
