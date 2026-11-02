@@ -75,7 +75,6 @@ class JobConfig(BaseModel):
     retry_count: int = 2
     batch_size: int = 10
     batch_pause: float = 5.0
-    profiles: list[str] = []
 
 
 class Job(BaseModel):

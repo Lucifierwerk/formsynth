@@ -9,32 +9,6 @@ from loguru import logger
 
 from app.models.schemas import Question, ParsedForm, JobConfig
 
-# ─── Built-in profiles ────────────────────────────────────────────────────────
-
-PROFILES: dict[str, dict] = {
-    "young_male": {
-        "age_bias": ["18-25", "26-35"],
-        "gender_bias": ["Мужской"],
-        "budget_bias_low": True,
-    },
-    "young_female": {
-        "age_bias": ["18-25", "26-35"],
-        "gender_bias": ["Женская"],
-        "budget_bias_low": True,
-    },
-    "premium_customer": {
-        "budget_bias_high": True,
-        "quality_weight_boost": 2,
-    },
-    "budget_buyer": {
-        "budget_bias_low": True,
-        "price_weight_boost": 2,
-    },
-    "event_customer": {
-        "purpose_bias": ["Оформление мероприятия"],
-    },
-}
-
 # ─── Text pools ───────────────────────────────────────────────────────────────
 
 DEFAULT_SHORT_TEXTS = [
@@ -193,37 +167,15 @@ class ResponseGenerator:
     def __init__(self, config: JobConfig):
         self.config = config
         self.questions = config.questions
-        self.active_profiles = [
-            PROFILES[p] for p in config.profiles if p in PROFILES
-        ]
 
-    def _apply_profile_weights(self, question: Question) -> list[int]:
-        """Return weights list, optionally modified by active profiles."""
-        weights = [
-            o.weight if o.enabled else 0
-            for o in question.options
-        ]
-        if not self.active_profiles:
-            return weights
-
-        title_lower = question.title.lower()
-        for profile in self.active_profiles:
-            # Budget biasing
-            if "budget_bias_low" in profile and "бюджет" in title_lower:
-                for i, opt in enumerate(question.options):
-                    if any(k in opt.value for k in ["До", "1000"]):
-                        weights[i] = min(weights[i] * 2, 100)
-            if "budget_bias_high" in profile and "бюджет" in title_lower:
-                for i, opt in enumerate(question.options):
-                    if any(k in opt.value for k in ["5000", "3500"]):
-                        weights[i] = min(weights[i] * 2, 100)
-        return weights
+    def _option_weights(self, question: Question) -> list[int]:
+        return [o.weight if o.enabled else 0 for o in question.options]
 
     def _generate_single(self, question: Question) -> str:
         enabled = [o for o in question.options if o.enabled]
         if not enabled:
             return ""
-        raw_weights = self._apply_profile_weights(question)
+        raw_weights = self._option_weights(question)
         enabled_weights = [w for o, w in zip(question.options, raw_weights) if o.enabled]
 
         # Exclude weight=0 options from selection (user intent: "never pick this")
@@ -241,7 +193,7 @@ class ResponseGenerator:
         if not enabled:
             return []
 
-        raw_weights = self._apply_profile_weights(question)
+        raw_weights = self._option_weights(question)
         w_map = {o.value: w for o, w in zip(question.options, raw_weights) if o.enabled}
 
         # Split into exclusive (solo answers) and regular options
@@ -350,7 +302,7 @@ class ResponseGenerator:
                     payload[f"entry.{q.entry_id}"] = val
                     context[f"entry.{q.entry_id}"] = val
                 elif q.qtype == "single":
-                    raw_weights = self._apply_profile_weights(q)
+                    raw_weights = self._option_weights(q)
                     enabled_options = [o for o in q.options if o.enabled]
                     if not enabled_options or all(w == 0 for w in raw_weights):
                         continue
@@ -358,7 +310,7 @@ class ResponseGenerator:
                     payload[f"entry.{q.entry_id}"] = val
                     context[f"entry.{q.entry_id}"] = val
                 elif q.qtype == "multi":
-                    raw_weights = self._apply_profile_weights(q)
+                    raw_weights = self._option_weights(q)
                     enabled_options = [o for o in q.options if o.enabled]
                     if not enabled_options or all(w == 0 for w in raw_weights):
                         continue

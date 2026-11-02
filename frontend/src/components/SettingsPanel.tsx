@@ -1,13 +1,4 @@
 import { useStore } from '../store'
-import clsx from 'clsx'
-
-const AVAILABLE_PROFILES = [
-  { id: 'young_male',       label: 'Молодой мужчина',    emoji: '🧑' },
-  { id: 'young_female',     label: 'Молодая женщина',    emoji: '👩' },
-  { id: 'premium_customer', label: 'Премиум-клиент',     emoji: '💎' },
-  { id: 'budget_buyer',     label: 'Бюджетный',          emoji: '💰' },
-  { id: 'event_customer',   label: 'Клиент мероприятия', emoji: '🎉' },
-]
 
 function NumField({
   label, value, onChange, min, max, step, unit
@@ -33,13 +24,6 @@ function NumField({
 export function SettingsPanel() {
   const { jobSettings, setJobSettings } = useStore()
 
-  function toggleProfile(id: string) {
-    const p = jobSettings.profiles
-    setJobSettings({
-      profiles: p.includes(id) ? p.filter(x => x !== id) : [...p, id]
-    })
-  }
-
   return (
     <div className="space-y-5">
       <div>
@@ -59,32 +43,6 @@ export function SettingsPanel() {
             onChange={v => setJobSettings({ batch_size: v })} min={1} />
           <NumField label="Пауза пачки" value={jobSettings.batch_pause}
             onChange={v => setJobSettings({ batch_pause: v })} min={0} step={0.5} unit="с" />
-        </div>
-      </div>
-
-      <div>
-        <h3 className="font-semibold text-text mb-2 text-sm">Профили респондентов</h3>
-        <p className="text-xs text-muted mb-3">
-          Профили смещают веса ответов. Оставьте пустым для равномерного распределения.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {AVAILABLE_PROFILES.map(p => {
-            const active = jobSettings.profiles.includes(p.id)
-            return (
-              <button
-                key={p.id}
-                onClick={() => toggleProfile(p.id)}
-                className={clsx(
-                  'tag px-3 py-1.5 border cursor-pointer transition-all text-xs',
-                  active
-                    ? 'border-accent/50 bg-accent/10 text-accent'
-                    : 'border-border bg-surface text-muted hover:border-border hover:text-text'
-                )}
-              >
-                {p.emoji} {p.label}
-              </button>
-            )
-          })}
         </div>
       </div>
     </div>

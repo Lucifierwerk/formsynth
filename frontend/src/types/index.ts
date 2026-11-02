@@ -50,7 +50,6 @@ export interface JobConfig {
   retry_count: number
   batch_size: number
   batch_pause: number
-  profiles: string[]
 }
 
 export interface Job {

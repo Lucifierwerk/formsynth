@@ -20,7 +20,6 @@ interface AppState {
     retry_count: number
     batch_size: number
     batch_pause: number
-    profiles: string[]
   }
   setJobSettings: (patch: Partial<AppState['jobSettings']>) => void
 
@@ -61,7 +60,6 @@ export const useStore = create<AppState>((set) => ({
     retry_count: 2,
     batch_size: 10,
     batch_pause: 5,
-    profiles: [],
   },
   setJobSettings: (patch) =>
     set((s) => ({ jobSettings: { ...s.jobSettings, ...patch } })),
