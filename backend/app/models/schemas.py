@@ -20,6 +20,7 @@ class TextPoolItem(BaseModel):
     value: str
     weight: int = 1
     enabled: bool = True
+    gender: str = "any"  # "m" | "f" | "any" — for gender-filtered name packs
 
 
 class Question(BaseModel):
@@ -36,6 +37,8 @@ class Question(BaseModel):
     max_select: int = 3
     # text-specific
     text_pool: list[TextPoolItem] = []
+    pack: str | None = None            # built-in pack name to use as fallback
+    linked_to_entry: str | None = None  # entry_id of gender question for name filtering
     # section/page this question belongs to (0-based)
     page_index: int = 0
 

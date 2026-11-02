@@ -10,6 +10,7 @@ export interface TextPoolItem {
   value: string
   weight: number
   enabled: boolean
+  gender?: 'm' | 'f' | 'any'  // for gender-filtered name packs
 }
 
 export interface Question {
@@ -24,6 +25,8 @@ export interface Question {
   min_select: number
   max_select: number
   text_pool: TextPoolItem[]
+  pack?: string | null           // built-in pack name as fallback
+  linked_to_entry?: string | null // entry_id of gender question for name filtering
   page_index: number  // which section/page (0-based)
 }
 

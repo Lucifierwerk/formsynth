@@ -372,3 +372,111 @@ class TestEdgeCases:
         for text in DEFAULT_SHORT_TEXTS:
             for tw in tea_words:
                 assert tw not in text.lower(), f"Tea word '{tw}' found in: '{text}'"
+
+
+# ── Built-in packs & gender linking ───────────────────────────────────────────
+
+class TestPacksAndGender:
+    def test_builtin_pack_used_when_pool_empty(self):
+        """Empty text_pool + pack='cities' → value from cities pack."""
+        from app.generator.response_generator import BUILT_IN_PACKS
+        q = Question(entry_id="1", title="Город", qtype="text", text_pool=[], pack="cities")
+        g = gen([q])
+        for _ in range(30):
+            val = g._generate_text(q)
+            assert val in BUILT_IN_PACKS["cities"], f"Unexpected city: {val}"
+
+    def test_pack_all_15_present(self):
+        """All 15 expected pack keys exist in BUILT_IN_PACKS."""
+        from app.generator.response_generator import BUILT_IN_PACKS
+        expected = {
+            "names_male", "names_female", "surnames", "positive", "neutral",
+            "negative", "formal", "suggestions", "cities", "job_titles",
+            "ages", "emails", "scale_low", "scale_mid", "scale_high",
+        }
+        assert expected == set(BUILT_IN_PACKS.keys())
+
+    def test_detect_gender_male(self):
+        q = Question(entry_id="1", title="q", qtype="text")
+        g = gen([q])
+        assert g._detect_gender("Мужской") == "m"
+        assert g._detect_gender("мужчина") == "m"
+
+    def test_detect_gender_female(self):
+        q = Question(entry_id="1", title="q", qtype="text")
+        g = gen([q])
+        assert g._detect_gender("Женский") == "f"
+        assert g._detect_gender("женщина") == "f"
+
+    def test_detect_gender_any(self):
+        q = Question(entry_id="1", title="q", qtype="text")
+        g = gen([q])
+        assert g._detect_gender("Не указан") == "any"
+        assert g._detect_gender("") == "any"
+
+    def test_gender_linked_name_filters_pool(self):
+        """linked_to_entry + male gender choice → only 'm'/'any' items selected."""
+        gender_q = Question(entry_id="10", title="Пол", qtype="single",
+                            options=[Option(value="Мужской"), Option(value="Женский")])
+        name_q = Question(
+            entry_id="20", title="Имя", qtype="text",
+            text_pool=[
+                TextPoolItem(value="Иван", weight=1, enabled=True, gender="m"),
+                TextPoolItem(value="Мария", weight=1, enabled=True, gender="f"),
+                TextPoolItem(value="Саша", weight=1, enabled=True, gender="any"),
+            ],
+            linked_to_entry="10",
+        )
+        g = gen([gender_q, name_q])
+        context = {"entry.10": "Мужской"}
+        for _ in range(50):
+            val = g._generate_text(name_q, context)
+            assert val in ("Иван", "Саша"), f"Got female name for male context: {val}"
+
+    def test_gender_linked_name_filters_female(self):
+        gender_q = Question(entry_id="10", title="Пол", qtype="single",
+                            options=[Option(value="Женский")])
+        name_q = Question(
+            entry_id="20", title="Имя", qtype="text",
+            text_pool=[
+                TextPoolItem(value="Иван", weight=1, enabled=True, gender="m"),
+                TextPoolItem(value="Мария", weight=1, enabled=True, gender="f"),
+            ],
+            linked_to_entry="10",
+        )
+        g = gen([gender_q, name_q])
+        context = {"entry.10": "Женский"}
+        for _ in range(30):
+            val = g._generate_text(name_q, context)
+            assert val == "Мария", f"Got male name for female context: {val}"
+
+    def test_context_built_in_generate_response(self):
+        """generate_response builds context so linked text question sees gender."""
+        from app.generator.response_generator import BUILT_IN_PACKS
+        gender_q = Question(entry_id="10", title="Пол", qtype="single",
+                            options=[Option(value="Мужской", weight=1),
+                                     Option(value="Женский", weight=0)])
+        name_q = Question(
+            entry_id="20", title="Имя", qtype="text",
+            text_pool=[
+                TextPoolItem(value="Иван", weight=1, enabled=True, gender="m"),
+                TextPoolItem(value="Мария", weight=1, enabled=True, gender="f"),
+            ],
+            linked_to_entry="10",
+        )
+        g = gen([gender_q, name_q])
+        for _ in range(50):
+            payload = g.generate_response()
+            assert payload["entry.10"] == "Мужской"
+            assert payload["entry.20"] == "Иван"
+
+    def test_pack_fallback_respects_gender_for_names(self):
+        """pack='names_male' + female context → switches to names_female."""
+        from app.generator.response_generator import BUILT_IN_PACKS
+        name_q = Question(entry_id="20", title="Имя", qtype="text",
+                          text_pool=[], pack="names_male", linked_to_entry="10")
+        g = gen([name_q])
+        context_f = {"entry.10": "Женский"}
+        for _ in range(20):
+            val = g._generate_text(name_q, context_f)
+            assert val in BUILT_IN_PACKS["names_female"], f"Expected female name, got: {val}"

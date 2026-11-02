@@ -1,8 +1,26 @@
 import { useState, useRef, useCallback } from 'react'
-import { ChevronDown, ChevronRight, ToggleLeft, ToggleRight, Plus, X, AlertTriangle, ClipboardList } from 'lucide-react'
+import { ChevronDown, ChevronRight, ToggleLeft, ToggleRight, Plus, X, AlertTriangle, ClipboardList, Link2 } from 'lucide-react'
 import { useStore } from '../store'
 import type { Question, Option, TextPoolItem } from '../types'
 import clsx from 'clsx'
+
+const BUILT_IN_PACK_OPTIONS: { value: string; label: string }[] = [
+  { value: 'names_male',   label: 'Имена мужские' },
+  { value: 'names_female', label: 'Имена женские' },
+  { value: 'surnames',     label: 'Фамилии' },
+  { value: 'positive',     label: 'Позитивные фразы' },
+  { value: 'neutral',      label: 'Нейтральные фразы' },
+  { value: 'negative',     label: 'Негативные фразы' },
+  { value: 'formal',       label: 'Официальный стиль' },
+  { value: 'suggestions',  label: 'Предложения' },
+  { value: 'cities',       label: 'Города России' },
+  { value: 'job_titles',   label: 'Должности' },
+  { value: 'ages',         label: 'Возраст' },
+  { value: 'emails',       label: 'Email-адреса' },
+  { value: 'scale_low',    label: 'Шкала: низкая оценка' },
+  { value: 'scale_mid',    label: 'Шкала: средняя оценка' },
+  { value: 'scale_high',   label: 'Шкала: высокая оценка' },
+]
 
 const QTYPE_LABEL: Record<string, { label: string; color: string }> = {
   single:   { label: 'Один вариант',    color: 'bg-blue-500/20 text-blue-300' },
@@ -69,13 +87,17 @@ function OptionRow({ opt, onChange, isMulti }: {
 
 // ── Text pool editor for text/textarea questions ───────────────────────────────
 
-function TextPoolEditor({ q }: { q: Question }) {
+function TextPoolEditor({ q, allQuestions }: { q: Question; allQuestions: Question[] }) {
   const { updateQuestion } = useStore()
   const [draft, setDraft] = useState('')
   const [bulkMode, setBulkMode] = useState(false)
   const [bulkText, setBulkText] = useState('')
   const [probMode, setProbMode] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const genderQuestions = allQuestions.filter(aq => aq.qtype === 'single' && aq.id !== q.id)
+  const showGenderTags = q.pack === 'names_male' || q.pack === 'names_female'
+    || q.text_pool.some(it => it.gender && it.gender !== 'any')
 
   const pool = q.text_pool
   const totalWeight = pool.reduce((acc, it) => (
@@ -93,7 +115,7 @@ function TextPoolEditor({ q }: { q: Question }) {
     const existing = new Set(pool.map(i => i.value))
     const fresh: TextPoolItem[] = lines
       .filter(v => !existing.has(v))
-      .map(v => ({ value: v, weight: 1, enabled: true }))
+      .map(v => ({ value: v, weight: 1, enabled: true, gender: 'any' as const }))
     if (fresh.length) updateQuestion(q.id, { text_pool: [...pool, ...fresh] })
   }, [pool, q.id, updateQuestion])
 
@@ -173,6 +195,39 @@ function TextPoolEditor({ q }: { q: Question }) {
         </div>
       </div>
 
+      {/* Pack selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted shrink-0">Пак:</span>
+        <select
+          className="input text-xs flex-1 py-0.5"
+          value={q.pack ?? ''}
+          onChange={e => updateQuestion(q.id, { pack: e.target.value || null })}
+        >
+          <option value="">— свой пул —</option>
+          {BUILT_IN_PACK_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Linked gender question selector */}
+      {genderQuestions.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Link2 size={12} className="text-muted shrink-0" />
+          <span className="text-xs text-muted shrink-0">Пол из вопроса:</span>
+          <select
+            className="input text-xs flex-1 py-0.5"
+            value={q.linked_to_entry ?? ''}
+            onChange={e => updateQuestion(q.id, { linked_to_entry: e.target.value || null })}
+          >
+            <option value="">— не привязан —</option>
+            {genderQuestions.map(gq => (
+              <option key={gq.id} value={gq.entry_id}>{gq.title}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Bulk paste textarea */}
       {bulkMode && (
         <div className="space-y-1.5">
@@ -197,12 +252,19 @@ function TextPoolEditor({ q }: { q: Question }) {
       )}
 
       {/* Empty state warning */}
-      {pool.length === 0 && !bulkMode && (
+      {pool.length === 0 && !q.pack && !bulkMode && (
         <div className="flex items-start gap-2 rounded-lg bg-warn/10 border border-warn/20 px-3 py-2">
           <AlertTriangle size={13} className="text-warn shrink-0 mt-0.5" />
           <p className="text-xs text-warn/80 leading-relaxed">
             Пул пуст — будет использован стандартный набор нейтральных фраз.
-            Добавьте свои варианты ответов для этого вопроса.
+            Выберите пак или добавьте свои варианты.
+          </p>
+        </div>
+      )}
+      {pool.length === 0 && q.pack && !bulkMode && (
+        <div className="flex items-start gap-2 rounded-lg bg-accent/5 border border-accent/20 px-3 py-2">
+          <p className="text-xs text-accent/70 leading-relaxed">
+            Пул пуст — будет использован встроенный пак «{BUILT_IN_PACK_OPTIONS.find(o => o.value === q.pack)?.label ?? q.pack}».
           </p>
         </div>
       )}
@@ -235,6 +297,27 @@ function TextPoolEditor({ q }: { q: Question }) {
               <span className="flex-1 text-xs text-text break-words font-mono">{item.value}</span>
               {excluded && (
                 <span className="text-xs text-muted shrink-0" title="Вес = 0: вариант никогда не выбирается">исключён</span>
+              )}
+              {showGenderTags && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {(['m', 'f', 'any'] as const).map(g => (
+                    <button
+                      key={g}
+                      onClick={() => updateItem(i, { gender: g })}
+                      title={g === 'm' ? 'Мужской' : g === 'f' ? 'Женский' : 'Любой'}
+                      className={clsx(
+                        'text-xs px-1 py-0.5 rounded transition-colors border',
+                        (item.gender ?? 'any') === g
+                          ? g === 'm' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                            : g === 'f' ? 'bg-pink-500/20 text-pink-300 border-pink-500/40'
+                            : 'bg-muted/20 text-muted border-muted/30'
+                          : 'text-muted border-transparent hover:border-muted/30 hover:text-text'
+                      )}
+                    >
+                      {g === 'm' ? 'м' : g === 'f' ? 'ж' : '—'}
+                    </button>
+                  ))}
+                </div>
               )}
               {showProbControls && (
                 <div className="flex items-center gap-2 shrink-0">
@@ -289,13 +372,13 @@ function TextPoolEditor({ q }: { q: Question }) {
 
 // ── Question card ─────────────────────────────────────────────────────────────
 
-function QuestionCard({ q }: { q: Question }) {
+function QuestionCard({ q, allQuestions }: { q: Question; allQuestions: Question[] }) {
   const { updateQuestion } = useStore()
   const [expanded, setExpanded] = useState(true)
   const info = QTYPE_LABEL[q.qtype] ?? { label: q.qtype, color: 'bg-muted/20 text-muted' }
 
   const isText = q.qtype === 'text' || q.qtype === 'textarea'
-  const hasEmptyPool = isText && q.text_pool.length === 0
+  const hasEmptyPool = isText && q.text_pool.length === 0 && !q.pack
   const dimmed = !q.enabled
 
   function updateOption(idx: number, patch: Partial<Option>) {
@@ -357,7 +440,7 @@ function QuestionCard({ q }: { q: Question }) {
             </>
           )}
 
-          {isText && <TextPoolEditor q={q} />}
+          {isText && <TextPoolEditor q={q} allQuestions={allQuestions} />}
         </div>
       )}
     </div>
@@ -379,7 +462,7 @@ export function QuestionPanel() {
   }
 
   const emptyPools = questions.filter(
-    q => (q.qtype === 'text' || q.qtype === 'textarea') && q.text_pool.length === 0
+    q => (q.qtype === 'text' || q.qtype === 'textarea') && q.text_pool.length === 0 && !q.pack
   )
 
   // Group questions by page_index
@@ -426,7 +509,7 @@ export function QuestionPanel() {
           )}
           {pageMap.get(pageIdx)!.map(q => (
             <div key={q.id} className="mb-3">
-              <QuestionCard q={q} />
+              <QuestionCard q={q} allQuestions={questions} />
             </div>
           ))}
         </div>
